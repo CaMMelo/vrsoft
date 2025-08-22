@@ -46,7 +46,5 @@ async def main(notificacoes):
         durable=True,
     )
 
+    print(f" [VALIDACAO] Esperando mensagens. {id(notificacoes):x}")
     await queue.consume(partial(callback, channel=channel, notificacoes=notificacoes))
-
-    print(" [VALIDACAO] Esperando mensagens.")
-    await asyncio.Future()

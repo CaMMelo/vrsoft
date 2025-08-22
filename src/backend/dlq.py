@@ -20,6 +20,5 @@ async def main(notificacoes):
     connection = await aio_pika.connect_robust(config.RABBITMQ_URL)
     channel = await connection.channel()
     queue = await channel.declare_queue("fila.notificacao.dlq.caiomelo", durable=True)
+    print(f" [DLQ] Esperando mensagens. {id(notificacoes):x}")
     await queue.consume(partial(callback, channel=channel, notificacoes=notificacoes))
-    print(" [DLQ] Esperando mensagens.")
-    await asyncio.Future()

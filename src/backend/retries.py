@@ -38,7 +38,5 @@ async def main(notificacoes):
 
     queue = await channel.declare_queue("fila.notificacao.retry.caiomelo", durable=True)
 
+    print(f" [RETRY] Esperando mensagens. {id(notificacoes):x}")
     await queue.consume(partial(callback, channel=channel, notificacoes=notificacoes))
-
-    print(" [RETRY] Esperando mensagens.")
-    await asyncio.Future()

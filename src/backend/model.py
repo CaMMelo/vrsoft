@@ -1,7 +1,9 @@
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 from enum import Enum, StrEnum
-from uuid import UUID
+from uuid import UUID, uuid4
 
+import aio_pika
 from pydantic import BaseModel
 
 
@@ -53,4 +55,4 @@ async def notificar(payload, channel, notificacoes):
         aio_pika.Message(body=message_body),
         routing_key="fila.notificacao.entrada.caiomelo",
     )
-    return Notificacao
+    return notificacoes[traceId]

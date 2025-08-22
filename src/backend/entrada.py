@@ -40,7 +40,5 @@ async def main(notificacoes):
         "fila.notificacao.entrada.caiomelo", durable=True
     )
 
+    print(f" [ENTRADA] Esperando mensagens. {id(notificacoes):x}")
     await queue.consume(partial(callback, channel=channel, notificacoes=notificacoes))
-
-    print(" [ENTRADA] Esperando mensagens.")
-    await asyncio.Future()
