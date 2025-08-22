@@ -37,10 +37,7 @@ class Notificacao:
     statusNotificacao: StatusNotificacao
 
 
-notificacoes = {}
-
-
-async def notificar(payload, channel):
+async def notificar(payload, channel, notificacoes):
     traceId = f"{uuid4()}"
     notificacoes[traceId] = Notificacao(
         traceId=traceId,

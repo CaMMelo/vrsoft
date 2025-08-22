@@ -8,11 +8,11 @@ import aio_pika
 from backend import config, model
 
 
-async def callback(message: aio_pika.IncomingMessage, channel=None):
+async def callback(message: aio_pika.IncomingMessage, channel=None, notificacoes=None):
     async with message.process():
         body = loads(message.body.decode())
 
-        match model.notificacoes[body["content"]["traceId"]].tipoNotificacao:
+        match notificacoes[body["content"]["traceId"]].tipoNotificacao:
             case model.TipoNotificacao.EMAIL:
                 await asyncio.sleep(random.uniform(0.5, 1))
             case model.TipoNotificacao.SMS:
@@ -23,7 +23,7 @@ async def callback(message: aio_pika.IncomingMessage, channel=None):
                 ...
 
         if random.random() < 0.05:
-            model.notificacoes[body["content"]["traceId"]].statusNotificacao = (
+            notificacoes[body["content"]["traceId"]].statusNotificacao = (
                 model.StatusNotificacao.FALHA_ENVIO_FINAL
             )
             await channel.default_exchange.publish(
@@ -31,21 +31,22 @@ async def callback(message: aio_pika.IncomingMessage, channel=None):
                 routing_key="fila.notificacao.dlq.caiomelo",
             )
         else:
-            model.notificacoes[body["content"]["traceId"]].statusNotificacao = (
+            notificacoes[body["content"]["traceId"]].statusNotificacao = (
                 model.StatusNotificacao.ENVIADO_SUCESSO
             )
 
 
-async def main():
+async def main(notificacoes):
     connection = await aio_pika.connect_robust(config.RABBITMQ_URL)
     channel = await connection.channel()
     await channel.declare_queue("fila.notificacao.dlq.caiomelo", durable=True)
 
     queue = await channel.declare_queue(
-        "fila.notificacao.validacao.caiomelo", durable=True
+        "fila.notificacao.validacao.caiomelo",
+        durable=True,
     )
 
-    await queue.consume(partial(callback, channel=channel))
+    await queue.consume(partial(callback, channel=channel, notificacoes=notificacoes))
 
     print(" [VALIDACAO] Esperando mensagens.")
     await asyncio.Future()

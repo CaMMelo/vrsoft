@@ -13,6 +13,7 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup_event():
+    app.state.notificacoes = dict()
     app.state.rabbitmq_connection = await aio_pika.connect_robust(config.RABBITMQ_URL)
     app.state.rabbitmq_channel = await app.state.rabbitmq_connection.channel()
 
@@ -22,10 +23,10 @@ async def startup_event():
         "fila.notificacao.entrada.caiomelo", durable=True
     )
 
-    asyncio.create_task(entrada.main())
-    asyncio.create_task(validacao.main())
-    asyncio.create_task(retries.main())
-    asyncio.create_task(dlq.main())
+    asyncio.create_task(entrada.main(app.state.notificacoes))
+    asyncio.create_task(validacao.main(app.state.notificacoes))
+    asyncio.create_task(retries.main(app.state.notificacoes))
+    asyncio.create_task(dlq.main(app.state.notificacoes))
 
 
 @app.on_event("shutdown")
@@ -36,7 +37,7 @@ async def shutdown_event():
 @app.post("/api/notificar", status_code=status.HTTP_202_ACCEPTED)
 async def __notificar(payload: model.PayloadNotificacao, request: Request):
     channel = request.app.state.rabbitmq_channel
-    result = await model.notificar(payload, channel)
+    result = await model.notificar(payload, channel, app.state.notificacoes)
     return {
         "mensagemId": result.mensagemId,
         "traceId": result.traceId,
@@ -45,6 +46,6 @@ async def __notificar(payload: model.PayloadNotificacao, request: Request):
 
 @app.get("/api/notificacao/status/{traceId}")
 def __status(traceId: UUID):
-    if f"{traceId}" not in model.notificacoes:
+    if f"{traceId}" not in app.state.notificacoes:
         raise HTTPException(status_code=404, detail="notificacao nao encontrada.")
-    return asdict(model.notificacoes[f"{traceId}"])
+    return asdict(app.state.notificacoes[f"{traceId}"])

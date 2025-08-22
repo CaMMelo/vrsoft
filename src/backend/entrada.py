@@ -8,11 +8,11 @@ import aio_pika
 from backend import config, model
 
 
-async def callback(message: aio_pika.IncomingMessage, channel=None):
+async def callback(message: aio_pika.IncomingMessage, channel=None, notificacoes=None):
     async with message.process():
         body = loads(message.body.decode())
         if random.random() < 0.15:
-            model.notificacoes[body["content"]["traceId"]].statusNotificacao = (
+            notificacoes[body["content"]["traceId"]].statusNotificacao = (
                 model.StatusNotificacao.FALHA_PROCESSAMENTO_INICIAL
             )
             await channel.default_exchange.publish(
@@ -21,7 +21,7 @@ async def callback(message: aio_pika.IncomingMessage, channel=None):
             )
         else:
             await asyncio.sleep(random.uniform(1, 1.5))
-            model.notificacoes[body["content"]["traceId"]].statusNotificacao = (
+            notificacoes[body["content"]["traceId"]].statusNotificacao = (
                 model.StatusNotificacao.PROCESSADO_INTERMEDIARIO
             )
             await channel.default_exchange.publish(
@@ -30,7 +30,7 @@ async def callback(message: aio_pika.IncomingMessage, channel=None):
             )
 
 
-async def main():
+async def main(notificacoes):
     connection = await aio_pika.connect_robust(config.RABBITMQ_URL)
     channel = await connection.channel()
     await channel.declare_queue("fila.notificacao.retry.caiomelo", durable=True)
@@ -40,7 +40,7 @@ async def main():
         "fila.notificacao.entrada.caiomelo", durable=True
     )
 
-    await queue.consume(partial(callback, channel=channel))
+    await queue.consume(partial(callback, channel=channel, notificacoes=notificacoes))
 
     print(" [ENTRADA] Esperando mensagens.")
     await asyncio.Future()
