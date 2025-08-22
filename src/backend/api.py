@@ -18,10 +18,14 @@ async def startup_event():
 
     from backend import dlq, entrada, retries, validacao
 
-    app.state.consumer_task = asyncio.create_task(entrada.main())
-    app.state.consumer_task = asyncio.create_task(validacao.main())
-    app.state.consumer_task = asyncio.create_task(retries.main())
-    app.state.consumer_task = asyncio.create_task(dlq.main())
+    await app.state.rabbitmq_channel.declare_queue(
+        "fila.notificacao.entrada.caiomelo", durable=True
+    )
+
+    asyncio.create_task(entrada.main())
+    asyncio.create_task(validacao.main())
+    asyncio.create_task(retries.main())
+    asyncio.create_task(dlq.main())
 
 
 @app.on_event("shutdown")
@@ -31,27 +35,11 @@ async def shutdown_event():
 
 @app.post("/api/notificar", status_code=status.HTTP_202_ACCEPTED)
 async def __notificar(payload: model.PayloadNotificacao, request: Request):
-    traceId = f"{uuid4()}"
-    model.notificacoes[traceId] = model.Notificacao(
-        traceId=traceId,
-        mensagemId=payload.mensagemId,
-        conteudoMensagem=payload.conteudoMensagem,
-        tipoNotificacao=model.TipoNotificacao(payload.tipoNotificacao),
-        statusNotificacao=model.StatusNotificacao.RECEBIDO,
-    )
-
     channel = request.app.state.rabbitmq_channel
-    await channel.declare_queue("fila.notificacao.entrada.caiomelo", durable=True)
-    message_body = json.dumps(
-        {"content": asdict(model.notificacoes[traceId])}, default=str
-    ).encode()
-    await channel.default_exchange.publish(
-        aio_pika.Message(body=message_body),
-        routing_key="fila.notificacao.entrada.caiomelo",
-    )
+    result = await model.notificar(payload, channel)
     return {
-        "mensagemId": payload.mensagemId,
-        "traceId": traceId,
+        "mensagemId": result.mensagemId,
+        "traceId": result.traceId,
     }
 
 

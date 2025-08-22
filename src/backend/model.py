@@ -38,3 +38,23 @@ class Notificacao:
 
 
 notificacoes = {}
+
+
+async def notificar(payload, channel):
+    global notificacoes
+    traceId = f"{uuid4()}"
+    notificacoes[traceId] = Notificacao(
+        traceId=traceId,
+        mensagemId=payload.mensagemId,
+        conteudoMensagem=payload.conteudoMensagem,
+        tipoNotificacao=TipoNotificacao(payload.tipoNotificacao),
+        statusNotificacao=StatusNotificacao.RECEBIDO,
+    )
+    message_body = json.dumps(
+        {"content": asdict(notificacoes[traceId])}, default=str
+    ).encode()
+    await channel.default_exchange.publish(
+        aio_pika.Message(body=message_body),
+        routing_key="fila.notificacao.entrada.caiomelo",
+    )
+    return Notificacao

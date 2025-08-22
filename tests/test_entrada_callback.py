@@ -1,4 +1,4 @@
 from unittest.mock import Mock
 
-def test_callback_entrada():
-    ...
+
+def test_callback_entrada(): ...
