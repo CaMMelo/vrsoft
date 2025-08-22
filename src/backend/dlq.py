@@ -1,16 +1,19 @@
-import aio_pika
 import asyncio
 import random
 from functools import partial
-from backend import model
 from json import loads
-from backend import config
+
+import aio_pika
+
+from backend import config, model
 
 
-async def callback(message: aio_pika.IncomingMessage, channel = None):
+async def callback(message: aio_pika.IncomingMessage, channel=None):
     async with message.process():
         body = loads(message.body.decode())
-        print(f"FALHA NO PROCESSAMENTO: {body["content"]["traceId"]}: {body["content"]["conteudoMensagem"]}")
+        print(
+            f"FALHA NO PROCESSAMENTO: {body["content"]["traceId"]}: {body["content"]["conteudoMensagem"]}"
+        )
 
 
 async def main():

@@ -1,12 +1,15 @@
-from enum import StrEnum, Enum
-from pydantic import BaseModel
-from uuid import UUID
 from dataclasses import dataclass
+from enum import Enum, StrEnum
+from uuid import UUID
+
+from pydantic import BaseModel
+
 
 class TipoNotificacao(StrEnum):
     EMAIL = "EMAIL"
     SMS = "SMS"
     PUSH = "PUSH"
+
 
 class StatusNotificacao(StrEnum):
     RECEBIDO = "RECEBIDO"
@@ -18,10 +21,12 @@ class StatusNotificacao(StrEnum):
     FALHA_ENVIO_FINAL = "FALHA_ENVIO_FINAL"
     ENVIADO_SUCESSO = "ENVIADO_SUCESSO"
 
+
 class PayloadNotificacao(BaseModel):
     mensagemId: UUID
     conteudoMensagem: str
     tipoNotificacao: TipoNotificacao
+
 
 @dataclass
 class Notificacao:

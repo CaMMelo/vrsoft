@@ -1,24 +1,29 @@
-import aio_pika
 import asyncio
 import random
 from functools import partial
-from backend import model
 from json import loads
-from backend import config
+
+import aio_pika
+
+from backend import config, model
 
 
-async def callback(message: aio_pika.IncomingMessage, channel = None):
+async def callback(message: aio_pika.IncomingMessage, channel=None):
     async with message.process():
         body = loads(message.body.decode())
         if random.random() < 0.15:
-            model.notificacoes[body["content"]["traceId"]].statusNotificacao = model.StatusNotificacao.FALHA_PROCESSAMENTO_INICIAL
+            model.notificacoes[body["content"]["traceId"]].statusNotificacao = (
+                model.StatusNotificacao.FALHA_PROCESSAMENTO_INICIAL
+            )
             await channel.default_exchange.publish(
                 aio_pika.Message(body=message.body),
                 routing_key="fila.notificacao.retry.caiomelo",
             )
         else:
             await asyncio.sleep(random.uniform(1, 1.5))
-            model.notificacoes[body["content"]["traceId"]].statusNotificacao = model.StatusNotificacao.PROCESSADO_INTERMEDIARIO
+            model.notificacoes[body["content"]["traceId"]].statusNotificacao = (
+                model.StatusNotificacao.PROCESSADO_INTERMEDIARIO
+            )
             await channel.default_exchange.publish(
                 aio_pika.Message(body=message.body),
                 routing_key="fila.notificacao.validacao.caiomelo",
@@ -30,10 +35,12 @@ async def main():
     channel = await connection.channel()
     await channel.declare_queue("fila.notificacao.retry.caiomelo", durable=True)
     await channel.declare_queue("fila.notificacao.validacao.caiomelo", durable=True)
-    
-    queue = await channel.declare_queue("fila.notificacao.entrada.caiomelo", durable=True)
+
+    queue = await channel.declare_queue(
+        "fila.notificacao.entrada.caiomelo", durable=True
+    )
 
     await queue.consume(partial(callback, channel=channel))
-    
+
     print(" [ENTRADA] Esperando mensagens.")
     await asyncio.Future()

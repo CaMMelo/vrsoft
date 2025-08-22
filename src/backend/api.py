@@ -1,13 +1,12 @@
-from fastapi import FastAPI, Request, status, HTTPException
-
-from uuid import UUID, uuid4
-from dataclasses import asdict
-import json
-import aio_pika
 import asyncio
-from backend import model
-from backend import config
+import json
+from dataclasses import asdict
+from uuid import UUID, uuid4
 
+import aio_pika
+from fastapi import FastAPI, HTTPException, Request, status
+
+from backend import config, model
 
 app = FastAPI()
 
@@ -17,16 +16,12 @@ async def startup_event():
     app.state.rabbitmq_connection = await aio_pika.connect_robust(config.RABBITMQ_URL)
     app.state.rabbitmq_channel = await app.state.rabbitmq_connection.channel()
 
-    from backend import entrada
-    from backend import validacao
-    from backend import retries
-    from backend import dlq
+    from backend import dlq, entrada, retries, validacao
 
     app.state.consumer_task = asyncio.create_task(entrada.main())
     app.state.consumer_task = asyncio.create_task(validacao.main())
     app.state.consumer_task = asyncio.create_task(retries.main())
     app.state.consumer_task = asyncio.create_task(dlq.main())
-
 
 
 @app.on_event("shutdown")
@@ -47,15 +42,18 @@ async def __notificar(payload: model.PayloadNotificacao, request: Request):
 
     channel = request.app.state.rabbitmq_channel
     await channel.declare_queue("fila.notificacao.entrada.caiomelo", durable=True)
-    message_body = json.dumps({"content": asdict(model.notificacoes[traceId])}, default=str).encode()
+    message_body = json.dumps(
+        {"content": asdict(model.notificacoes[traceId])}, default=str
+    ).encode()
     await channel.default_exchange.publish(
         aio_pika.Message(body=message_body),
-        routing_key="fila.notificacao.entrada.caiomelo"
+        routing_key="fila.notificacao.entrada.caiomelo",
     )
     return {
         "mensagemId": payload.mensagemId,
         "traceId": traceId,
     }
+
 
 @app.get("/api/notificacao/status/{traceId}")
 def __status(traceId: UUID):
