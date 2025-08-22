@@ -1,1 +1,1 @@
-RABBITMQ_URL = "amqp://guest:guest@localhost/"
+RABBITMQ_URL = "amqp://guest:guest@rabbitmq/"

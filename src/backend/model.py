@@ -41,7 +41,6 @@ notificacoes = {}
 
 
 async def notificar(payload, channel):
-    global notificacoes
     traceId = f"{uuid4()}"
     notificacoes[traceId] = Notificacao(
         traceId=traceId,
