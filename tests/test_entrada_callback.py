@@ -21,6 +21,10 @@ async def test_notificar():
 
     notificacao = await notificar(payload, channel, notificacoes)
 
+    channel.default_exchange.publish.assert_awaited()
+    args, kwargs = channel.default_exchange.publish.await_args
+    assert kwargs["routing_key"] == "fila.notificacao.entrada.caiomelo"
+
     assert notificacoes[notificacao.traceId] is notificacao
     assert payload.mensagemId == notificacao.mensagemId
     assert payload.conteudoMensagem == notificacao.conteudoMensagem
